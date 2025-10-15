@@ -143,9 +143,8 @@
     // =================================================================================
     const GOOGLE_SHEETS_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT8XYpMQEshg2eZghit9nFFjIiRz8_G_PHnlOlYWmsX9kzrN1CH7v_FQE0ciZnU8Va4AZofLfJvm4KF/pub?gid=0&single=true&output=csv";
     
-    const CACHE_KEY = 'galvanissa_products_cache';
-    const CACHE_EXPIRY_KEY = CACHE_KEY + '_timestamp';
-    const CACHE_EXPIRY_MS = 24 * 60 * 60 * 1000; // 24 horas
+    // NOTA: Se ha eliminado la caché local para asegurar que la data sea siempre fresca
+    // cargada directamente desde Google Sheets.
 
     // Variables de estado
     let allProducts = []; 
@@ -191,23 +190,11 @@
     }
 
     // =================================================================================
-    // 1. CARGA Y PROCESAMIENTO DE DATOS (CON CACHING)
+    // 1. CARGA Y PROCESAMIENTO DE DATOS (SIN CACHING)
     // =================================================================================
     async function loadData() {
         
-        // 1. Intentar cargar desde caché
-        const cachedData = localStorage.getItem(CACHE_KEY);
-        const cachedTimestamp = localStorage.getItem(CACHE_EXPIRY_KEY);
-        const now = new Date().getTime();
-
-        if (cachedData && cachedTimestamp && (now - parseInt(cachedTimestamp) < CACHE_EXPIRY_MS)) {
-            setStatus("Catálogo cargado instantáneamente desde caché local.", false, 'bg-blue-100 text-blue-800');
-            const data = JSON.parse(cachedData).data;
-            processData(data);
-            return;
-        }
-
-        // 2. Si no hay caché o está expirada, cargar desde Google Sheets
+        // Cargar siempre desde Google Sheets
         setStatus("Conectando con Google Sheets. Esto puede tomar unos segundos...");
 
         try {
@@ -225,12 +212,9 @@
                     // Almacenar y procesar la data
                     processData(results.data);
 
-                    // Guardar la data en el caché local
-                    localStorage.setItem(CACHE_KEY, JSON.stringify({ data: allProducts }));
-                    localStorage.setItem(CACHE_EXPIRY_KEY, new Date().getTime());
-                    
-                    // Ocultar mensaje de estado después de un breve delay
-                    setTimeout(() => statusMessage.classList.add('hidden'), 1000);
+                    // Mensaje de éxito y ocultar estado
+                    setStatus("Catálogo cargado exitosamente desde Google Sheets.", false, 'bg-green-100 text-green-800');
+                    setTimeout(() => statusMessage.classList.add('hidden'), 1500);
                 },
                 error: function(error) {
                     setStatus("Error de red al cargar el archivo CSV. Asegúrate de que la URL sea pública.", true);
@@ -244,13 +228,14 @@
         }
     }
 
-    // Función para procesar y preparar los datos una vez cargados (desde CSV o caché)
+    // Función para procesar y preparar los datos una vez cargados
     function processData(data) {
         allProducts = data.map(item => {
             const normalizedItem = {};
             for (const key in item) {
                 // Normalizar claves y valores
-                normalizedItem[key.trim()] = item[key] ? item[key].trim() : '';
+                const cleanedValue = item[key] ? item[key].trim() : '';
+                normalizedItem[key.trim()] = cleanedValue;
             }
             return normalizedItem;
         }).filter(item => Object.values(item).some(val => val !== '')); // Eliminar filas completamente vacías
@@ -293,6 +278,12 @@
         }
         
         let displayValue = value;
+
+        // Si el valor es nulo o vacío, usamos un espacio no rompible para forzar la renderización.
+        if (!displayValue || displayValue.trim() === '') {
+            // Utilizar un espacio no rompible (\u00A0) para asegurar que la celda mantenga su altura y se vea.
+            return '\u00A0'; 
+        }
 
         // Formato especial para la columna 'PRECIO'
         if (key.toUpperCase().includes('PRECIO') && !isNaN(parseFloat(value))) {
@@ -356,12 +347,12 @@
             columnHeaders.forEach((key, colIndex) => {
                 const value = product[key];
                 
-                // === INYECCIÓN DE DATOS EN FILA DE DESKTOP (AQUÍ ESTÁ LA CORRECCIÓN) ===
+                // === INYECCIÓN DE DATOS EN FILA DE DESKTOP ===
                 const cell = row.insertCell(); // Insertar la celda en la fila de desktop
                 
-                // Formatear el valor (Desktop y Mobile)
+                // Formatear el valor (Desktop y Mobile). Esta función ahora asegura que la celda no esté vacía.
                 const displayValue = formatCellValue(key, value, cell); 
-                cell.textContent = displayValue; // <--- FIX: Inyectar el texto formateado en la celda
+                cell.textContent = displayValue;
                 
                 // === LÓGICA DE RENDERIZADO MÓVIL ===
 
@@ -504,8 +495,10 @@
 
     // Evento de Cerrar Sesión (Borra la bandera y redirige)
     logoutCatalogBtn.addEventListener('click', () => {
-        // Limpiar la bandera de sesión
+        // Limpiar la bandera de sesión y la caché (por si quedó alguna clave vieja)
         localStorage.removeItem('loggedIn');
+        localStorage.removeItem('galvanissa_products_cache'); 
+        localStorage.removeItem('galvanissa_products_cache_timestamp'); 
         // Redirigir al login
         window.location.href = "index.html"; 
     });
@@ -516,4 +509,5 @@
 </script>
 </body>
 </html>
+
 
