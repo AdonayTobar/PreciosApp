@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Catálogo de Precios Galvanissa (Protegido)</title>
+    <!-- Carga Tailwind CSS para un diseño moderno y responsive -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Fuente Inter de Google -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        /* Definición del color azul corporativo */
+        .color-galvanissa { color: #2c5282; }
+        .bg-color-galvanissa { background-color: #2c5282; }
+
+        /* Estilos base del diseño claro y profesional */
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background-color: #f3f4f6; /* Fondo gris claro */
+        }
+        /* Contenedor de la tabla con altura máxima y scroll */
+        .table-container { max-height: 80vh; overflow-y: auto; }
+        .sort-icon { display: inline-block; margin-left: 0.5rem; }
+        
+        /* Estilo minimalista y limpio para la cabecera de la tabla */
+        #tableHeader {
+            background-color: #f9fafb; /* Fondo muy claro para la cabecera */
+        }
+
+        /* ---------------------------------------------------- */
+        /* ESTILOS DE RESPONSIVIDAD (SOLO EN MOBILE) */
+        /* ---------------------------------------------------- */
+        
+        .mobile-card { display: none; }
+
+        /* Oculta la tabla tradicional en pantallas pequeñas */
+        @media (max-width: 639px) {
+            #productTable {
+                display: none;
+            }
+            /* Aseguramos que el contenedor de tarjetas se muestre en móvil */
+            #mobileList {
+                 display: block !important; 
+                 margin: 0 -1.5rem; /* Anula el padding del contenedor padre */
+            }
+            .mobile-card {
+                display: block; /* Muestra las tarjetas */
+                border-radius: 0; 
+            }
+        }
+        
+        /* Oculta las tarjetas en pantallas grandes */
+        @media (min-width: 640px) {
+              #mobileList {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="max-w-6xl mx-auto px-0 py-4 md:p-8">
+
+    <div id="main-content" class="hidden bg-white rounded-xl shadow-xl p-6 text-gray-900">
+        <!-- Título principal con el color #2c5282 -->
+        <h1 class="text-3xl font-extrabold color-galvanissa mb-2">Catálogo de Productos Galvanissa</h1>
+        
+        <!-- Botón de Cerrar Sesión (Visible solo en el catálogo) -->
+        <div class="flex justify-between items-center mb-4">
+            <p class="text-sm text-gray-700 font-semibold">
+                Los precios aquí mostrados podrían no estar actualizados.
+            </p>
+            <button id="logoutCatalogBtn" class="bg-red-500 text-white text-xs font-semibold px-3 py-1 rounded-lg hover:bg-red-600 transition duration-150 shadow-md">
+                Cerrar Sesión
+            </button>
+        </div>
+
+
+        <!-- Controles de Búsqueda -->
+        <div class="mb-6 flex flex-col md:flex-row space-y-3 md:space-y-0 md:space-x-4 relative">
+            <input type="text" id="searchInput" placeholder="Buscar por Código o Descripción..."
+                   class="flex-1 p-3 pr-10 border border-gray-300 bg-white text-gray-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2c5282] transition duration-150 shadow-sm">
+            
+            <!-- Botón de Limpiar Búsqueda -->
+            <button id="clearSearchBtn" class="absolute right-0 top-0 mt-3 mr-3 text-gray-400 hover:text-gray-600 hidden" title="Limpiar búsqueda">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+                </svg>
+            </button>
+        </div>
+
+        <!-- Indicador de Carga/Mensajes -->
+        <div id="statusMessage" class="mb-4 text-lg font-medium text-center p-3 rounded-lg bg-yellow-100 text-yellow-800 hidden">
+            Cargando datos...
+        </div>
+
+        <!-- Contador de Resultados -->
+        <div id="resultsCount" class="mb-4 text-gray-600 text-center text-sm font-semibold"></div>
+        
+        <!-- Contenedor de la Tabla (Desktop) / Lista (Mobile) -->
+        <div class="table-container shadow-lg rounded-lg border border-gray-200">
+            <!-- ESTRUCTURA DE TABLA (VISIBLE EN DESKTOP) -->
+            <table id="productTable" class="min-w-full divide-y divide-gray-200">
+                <thead class="sticky top-0 shadow-sm" style="z-index: 1;">
+                    <tr id="tableHeader">
+                        <!-- Las cabeceras se generarán aquí con JavaScript -->
+                    </tr>
+                </thead>
+                <tbody id="productTableBody" class="divide-y divide-gray-200 text-sm">
+                    <!-- Los datos de los productos se inyectarán aquí (Desktop) -->
+                    <tr id="initialLoadingRow"><td colspan="4" class="p-4 text-center text-gray-400">Iniciando carga de datos...</td></tr>
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- ESTRUCTURA DE LISTA DE TARJETAS (VISIBLE EN MOBILE) -->
+        <div id="mobileList" class="space-y-px pt-4"> 
+              <!-- Los datos de los productos se inyectarán aquí (Mobile) -->
+        </div>
+
+    </div>
+</div>
+
+<!-- LIBRERÍAS DE JAVASCRIPT -->
+<!-- PapaParse: Para leer el CSV de forma eficiente -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+
+<script>
+    // =================================================================================
+    // 0. VERIFICACIÓN DE SESIÓN (SEGURIDAD)
+    // =================================================================================
+    const isLoggedIn = localStorage.getItem('loggedIn');
+    if (!isLoggedIn || isLoggedIn !== 'true') {
+        // Redirige al login si la bandera de sesión no existe o es incorrecta
+        window.location.href = "index.html"; 
+    } else {
+        // Muestra el contenido principal de la aplicación
+        document.getElementById('main-content').classList.remove('hidden');
+    }
+
+    // =================================================================================
+    // CONFIGURACIÓN: ¡TU URL CSV DE GOOGLE SHEETS!
+    // =================================================================================
+    const GOOGLE_SHEETS_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT8XYpMQEshg2eZghit9nFFjIiRz8_G_PHnlOlYWmsX9kzrN1CH7v_FQE0ciZnU8Va4AZofLfJvm4KF/pub?gid=0&single=true&output=csv";
+    
+    const CACHE_KEY = 'galvanissa_products_cache';
+    const CACHE_EXPIRY_KEY = CACHE_KEY + '_timestamp';
+    const CACHE_EXPIRY_MS = 24 * 60 * 60 * 1000; // 24 horas
+
+    // Variables de estado
+    let allProducts = []; 
+    let currentSort = { column: null, direction: 'asc' }; 
+    let columnHeaders = []; // Almacena los nombres de las columnas
+
+    // Elementos del DOM
+    const statusMessage = document.getElementById('statusMessage');
+    const tableHeader = document.getElementById('tableHeader');
+    const productTableBody = document.getElementById('productTableBody');
+    const mobileList = document.getElementById('mobileList');
+    const searchInput = document.getElementById('searchInput');
+    const clearSearchBtn = document.getElementById('clearSearchBtn'); // Nuevo botón UX
+    const resultsCount = document.getElementById('resultsCount');
+    const logoutCatalogBtn = document.getElementById('logoutCatalogBtn');
+
+    // Muestra u oculta el mensaje de estado
+    function setStatus(message, isError = false, customClass = '') {
+        statusMessage.textContent = message;
+        // Paleta clara para mensajes de estado, permite clase personalizada
+        const defaultClass = isError ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800';
+        statusMessage.className = `mb-4 text-lg font-medium text-center p-3 rounded-lg ${customClass || defaultClass}`;
+        statusMessage.classList.remove('hidden');
+    }
+
+    // Oculta la fila de carga inicial
+    function hideInitialRow() {
+        const row = document.getElementById('initialLoadingRow');
+        if(row) row.remove();
+    }
+
+    // =================================================================================
+    // FUNCIÓN UTILITARIA: DEBOUNCE (ANTI-REBOTE)
+    // =================================================================================
+    function debounce(func, delay) {
+        let timeoutId;
+        return function(...args) {
+            clearTimeout(timeoutId);
+            timeoutId = setTimeout(() => {
+                func.apply(this, args);
+            }, delay);
+        };
+    }
+
+    // =================================================================================
+    // 1. CARGA Y PROCESAMIENTO DE DATOS (CON CACHING)
+    // =================================================================================
+    async function loadData() {
+        
+        // 1. Intentar cargar desde caché
+        const cachedData = localStorage.getItem(CACHE_KEY);
+        const cachedTimestamp = localStorage.getItem(CACHE_EXPIRY_KEY);
+        const now = new Date().getTime();
+
+        if (cachedData && cachedTimestamp && (now - parseInt(cachedTimestamp) < CACHE_EXPIRY_MS)) {
+            setStatus("Catálogo cargado instantáneamente desde caché local.", false, 'bg-blue-100 text-blue-800');
+            const data = JSON.parse(cachedData).data;
+            processData(data);
+            return;
+        }
+
+        // 2. Si no hay caché o está expirada, cargar desde Google Sheets
+        setStatus("Conectando con Google Sheets. Esto puede tomar unos segundos...");
+
+        try {
+            Papa.parse(GOOGLE_SHEETS_CSV_URL, {
+                download: true,
+                header: true, 
+                skipEmptyLines: true,
+                complete: function(results) {
+                    if (results.data.length === 0 || results.errors.length > 0) {
+                        const errorMsg = results.errors.length > 0 ? results.errors[0].message : "No se encontraron datos. Revisa la URL y los permisos.";
+                        setStatus("Error al procesar datos: " + errorMsg, true);
+                        return;
+                    }
+                    
+                    // Almacenar y procesar la data
+                    processData(results.data);
+
+                    // Guardar la data en el caché local
+                    localStorage.setItem(CACHE_KEY, JSON.stringify({ data: allProducts }));
+                    localStorage.setItem(CACHE_EXPIRY_KEY, new Date().getTime());
+                    
+                    // Ocultar mensaje de estado después de un breve delay
+                    setTimeout(() => statusMessage.classList.add('hidden'), 1000);
+                },
+                error: function(error) {
+                    setStatus("Error de red al cargar el archivo CSV. Asegúrate de que la URL sea pública.", true);
+                    console.error("PapaParse Error:", error);
+                }
+            });
+
+        } catch (e) {
+            setStatus("Ocurrió un error inesperado al iniciar la carga.", true);
+            console.error("Fetch/Load Error:", e);
+        }
+    }
+
+    // Función para procesar y preparar los datos una vez cargados (desde CSV o caché)
+    function processData(data) {
+        allProducts = data.map(item => {
+            const normalizedItem = {};
+            for (const key in item) {
+                // Normalizar claves y valores
+                normalizedItem[key.trim()] = item[key] ? item[key].trim() : '';
+            }
+            return normalizedItem;
+        }).filter(item => Object.values(item).some(val => val !== '')); // Eliminar filas completamente vacías
+
+        hideInitialRow();
+
+        if (allProducts.length > 0) {
+            columnHeaders = Object.keys(allProducts[0]); // Almacena las cabeceras
+            createHeader(columnHeaders);
+            filterAndRenderProducts();
+        } else {
+            setStatus("Datos cargados, pero el catálogo está vacío.", true);
+        }
+    }
+
+
+    // =================================================================================
+    // 2. RENDERING Y FILTRADO
+    // =================================================================================
+
+    // Crea las cabeceras de la tabla a partir de las claves del objeto
+    function createHeader(columns) {
+        tableHeader.innerHTML = ''; 
+        columns.forEach(column => {
+            const th = document.createElement('th');
+            // Clases para tema claro: texto con color #2c5282, fondo gris muy claro
+            th.className = 'px-6 py-3 text-left text-xs font-bold color-galvanissa uppercase cursor-pointer bg-gray-50 hover:bg-gray-100 transition duration-150 border-b border-gray-200';
+            th.textContent = column;
+            th.setAttribute('data-column', column);
+            th.addEventListener('click', () => sortAndRender(column));
+            tableHeader.appendChild(th);
+        });
+    }
+
+    // Función auxiliar para formatear valores
+    function formatCellValue(key, value, cell) {
+        // Solo para Desktop: asignar clases a la celda
+        if (cell) { 
+            cell.className = 'px-6 py-3 whitespace-nowrap text-gray-700';
+        }
+        
+        let displayValue = value;
+
+        // Formato especial para la columna 'PRECIO'
+        if (key.toUpperCase().includes('PRECIO') && !isNaN(parseFloat(value))) {
+            displayValue = `$${parseFloat(value).toLocaleString('es-ES', { minimumFractionDigits: 2 })}`;
+            if (cell) cell.classList.add('font-extrabold', 'text-right', 'color-galvanissa'); 
+        } else if (key.toUpperCase().includes('CODIGO')) {
+            if (cell) cell.classList.add('font-medium', 'text-gray-900');
+        } else {
+            if (cell) cell.classList.add('text-left');
+        }
+        
+        return displayValue; 
+    }
+
+
+    // Renderiza el cuerpo de la tabla (Desktop) y las tarjetas (Mobile)
+    function renderTable(products) {
+        productTableBody.innerHTML = '';
+        mobileList.innerHTML = ''; 
+
+        // Mostrar u ocultar el botón de limpiar búsqueda
+        if (searchInput.value.length > 0) {
+            clearSearchBtn.classList.remove('hidden');
+        } else {
+            clearSearchBtn.classList.add('hidden');
+        }
+
+        // Manejo de Cero Resultados
+        if (products.length === 0) {
+            const colspan = tableHeader.children.length > 0 ? tableHeader.children.length : 4;
+            productTableBody.innerHTML = `<tr><td colspan="${colspan}" class="p-4 text-center text-gray-500">No se encontraron productos que coincidan con la búsqueda.</td></tr>`;
+            mobileList.innerHTML = '<p class="p-4 text-center text-gray-500">No se encontraron productos que coincidan con la búsqueda.</p>';
+            resultsCount.textContent = "0 resultados.";
+            return;
+        }
+
+        // Detectar índices de columnas clave
+        const keyIndices = {
+            codigo: columnHeaders.findIndex(h => h.toUpperCase().includes('CODIGO')),
+            descripcion: columnHeaders.findIndex(h => h.toUpperCase().includes('DESCRIPCION')),
+            precio: columnHeaders.findIndex(h => h.toUpperCase().includes('PRECIO')),
+        };
+
+        products.forEach((product, index) => {
+            // ------------------------------------
+            // 1. Renderizado de Fila de Tabla (Desktop)
+            // ------------------------------------
+            const row = productTableBody.insertRow();
+            row.className = index % 2 === 0 ? 'bg-white hover:bg-gray-50' : 'bg-gray-100 hover:bg-gray-200';
+
+            // ------------------------------------
+            // 2. Renderizado de Tarjeta (Mobile)
+            // ------------------------------------
+            const card = document.createElement('div');
+            card.className = 'mobile-card p-2 shadow-sm ' + (index % 2 === 0 ? 'bg-white' : 'bg-gray-100');
+            
+            let firstLineHTML = ''; 
+            let descriptionHTML = '';
+
+            // Iterar sobre las claves del producto para crear las celdas/campos
+            columnHeaders.forEach((key, colIndex) => {
+                const value = product[key];
+                const cell = row.insertCell(); // Insertar la celda en la fila de desktop
+
+                // Formatear el valor (Desktop y Mobile)
+                const displayValue = formatCellValue(key, value, cell); 
+                
+                // === LÓGICA DE RENDERIZADO MÓVIL ===
+
+                if (colIndex === keyIndices.codigo) {
+                    // 1. CÓDIGO
+                    firstLineHTML += `
+                        <div class="flex flex-col flex-shrink">
+                            <span class="font-semibold text-xs text-gray-500">CÓDIGO</span>
+                            <span class="text-base text-gray-900 font-bold">${displayValue}</span>
+                        </div>
+                    `;
+                } else if (colIndex === keyIndices.precio) {
+                    // 2. PRECIO (Flotando a la derecha en la misma línea)
+                    firstLineHTML += `
+                        <div class="flex-shrink-0 text-right">
+                            <span class="text-lg font-extrabold color-galvanissa">${displayValue}</span>
+                        </div>
+                    `;
+                } else if (colIndex === keyIndices.descripcion) {
+                    // 3. DESCRIPCIÓN 
+                    descriptionHTML += `
+                        <div class="flex flex-col pt-1">
+                            <span class="text-sm text-gray-800">${displayValue}</span>
+                        </div>
+                    `;
+                }
+                // Las demás columnas se omiten en móvil.
+            });
+
+            // Ensamblar la tarjeta móvil: Primera Línea (Código + Precio) + Descripción
+            card.innerHTML = `
+                <div class="flex justify-between items-start">
+                    ${firstLineHTML}
+                </div>
+                ${descriptionHTML}
+            `;
+            mobileList.appendChild(card);
+        });
+
+        resultsCount.textContent = `${products.length} resultados encontrados.`;
+        updateSortIcons();
+    }
+
+    // Filtra los productos basándose en el texto de búsqueda
+    function filterAndRenderProducts() {
+        const searchTerm = searchInput.value.toLowerCase().trim();
+        
+        let filteredProducts = allProducts;
+
+        if (searchTerm) {
+            // Búsqueda por múltiples palabras clave (AND logic)
+            const keywords = searchTerm.split(/\s+/).filter(k => k.length > 0); 
+            
+            if (keywords.length > 0) {
+                filteredProducts = allProducts.filter(product => {
+                    // Concatenar todos los valores de las columnas en un solo string para buscar
+                    const productText = Object.values(product).join(' ').toLowerCase();
+
+                    // Comprobar que TODAS las palabras clave estén presentes en el texto del producto
+                    return keywords.every(keyword => productText.includes(keyword));
+                });
+            }
+        }
+
+        if (currentSort.column) {
+            sortProducts(filteredProducts, currentSort.column, currentSort.direction);
+        }
+
+        renderTable(filteredProducts);
+    }
+
+    // =================================================================================
+    // 3. ORDENACIÓN (SORTING)
+    // =================================================================================
+
+    function sortAndRender(column) {
+        let direction = 'asc';
+        if (currentSort.column === column) {
+            direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
+        }
+        
+        currentSort = { column, direction };
+        filterAndRenderProducts(); // Vuelve a filtrar y renderizar con el nuevo orden
+    }
+    
+    function sortProducts(products, column, direction) {
+        products.sort((a, b) => {
+            let valA = a[column];
+            let valB = b[column];
+            
+            const numA = parseFloat(valA);
+            const numB = parseFloat(valB);
+
+            let comparison = 0;
+            if (!isNaN(numA) && !isNaN(numB)) {
+                // Ordenación numérica
+                comparison = numA - numB;
+            } else {
+                // Ordenación alfabética
+                comparison = String(valA).localeCompare(String(valB));
+            }
+
+            return direction === 'asc' ? comparison : -comparison;
+        });
+    }
+
+    function updateSortIcons() {
+        const headers = tableHeader.querySelectorAll('th');
+        headers.forEach(th => {
+            const icon = th.querySelector('.sort-icon');
+            if (icon) icon.remove();
+
+            if (th.getAttribute('data-column') === currentSort.column) {
+                const span = document.createElement('span');
+                span.className = 'sort-icon';
+                // Iconos Unicode para indicar la dirección
+                span.innerHTML = currentSort.direction === 'asc' ? '&#x25B2;' : '&#x25BC;'; 
+                th.appendChild(span);
+            }
+        });
+    }
+
+
+    // =================================================================================
+    // 4. INICIALIZACIÓN DE EVENTOS
+    // =================================================================================
+    
+    // Aplicar debounce a la función de filtrado
+    const debouncedFilter = debounce(filterAndRenderProducts, 300);
+
+    // Evento de búsqueda
+    searchInput.addEventListener('input', debouncedFilter);
+
+    // Evento de Limpiar Búsqueda
+    clearSearchBtn.addEventListener('click', () => {
+        searchInput.value = '';
+        filterAndRenderProducts(); // Vuelve a renderizar la lista completa
+        searchInput.focus();
+    });
+
+    // Evento de Cerrar Sesión (Borra la bandera y redirige)
+    logoutCatalogBtn.addEventListener('click', () => {
+        // Limpiar la bandera de sesión
+        localStorage.removeItem('loggedIn');
+        // Redirigir al login
+        window.location.href = "index.html"; 
+    });
+
+
+    document.addEventListener('DOMContentLoaded', loadData);
+
+</script>
+</body>
+</html>
