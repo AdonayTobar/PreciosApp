@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Firebase Auth Multi-View</title>
+    <!-- Carga de Tailwind CSS para estilos -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Fuente Inter de Google */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f4f7f9;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4">
+
+    <!-- Contenedor Principal de la Aplicación -->
+    <div id="app-container" class="w-full max-w-md bg-white shadow-2xl shadow-gray-300 rounded-xl p-8 transition-all duration-300">
+        
+        <h1 class="text-3xl font-bold text-gray-800 mb-8 text-center">
+            <span id="header-title">Inicia Sesión en la Plataforma</span>
+        </h1>
+
+        <!-- Mensajes (Éxito o Error) -->
+        <div id="message-container" class="hidden px-4 py-3 rounded-md mb-4" role="alert">
+            <strong id="message-strong" class="font-bold"></strong>
+            <span id="message-text" class="block sm:inline"></span>
+        </div>
+
+        <!-- Loader simple -->
+        <div id="loader" class="hidden text-center py-6">
+            <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600 inline-block"></div>
+            <p class="mt-2 text-blue-600">Procesando...</p>
+        </div>
+
+        <!-- ============================================= -->
+        <!-- 1. VISTA DE INICIO DE SESIÓN (LOGIN) -->
+        <!-- ============================================= -->
+        <div id="login-form-view" class="space-y-4">
+            <input type="email" id="login-email" placeholder="Correo Electrónico" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-150" required>
+            <input type="password" id="login-password" placeholder="Contraseña" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-150" required>
+            
+            <button id="login-btn" class="w-full bg-blue-700 text-white font-semibold py-3 rounded-lg hover:bg-blue-800 transition duration-150 shadow-lg shadow-blue-400/50">
+                Iniciar Sesión
+            </button>
+
+            <div class="text-center pt-2 text-sm text-gray-600 space-y-2">
+                <a href="#" id="forgot-password-link" class="block text-blue-600 hover:text-blue-800 font-medium">¿Olvidaste tu contraseña?</a>
+                <p>
+                    ¿No tienes cuenta? 
+                    <a href="#" id="go-to-signup-link" class="text-blue-600 hover:text-blue-800 font-medium">Regístrate aquí.</a>
+                </p>
+            </div>
+        </div>
+
+        <!-- ============================================= -->
+        <!-- 2. VISTA DE CREACIÓN DE CUENTA (SIGNUP) -->
+        <!-- ============================================= -->
+        <div id="signup-form-view" class="space-y-4 hidden">
+            <input type="email" id="signup-email" placeholder="Correo Electrónico" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-150" required>
+            <input type="password" id="signup-password" placeholder="Contraseña (mínimo 6 caracteres)" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-150" required>
+            
+            <button id="signup-btn" class="w-full bg-blue-500 text-white font-semibold py-3 rounded-lg hover:bg-blue-600 transition duration-150 shadow-lg shadow-blue-300/50">
+                Crear Cuenta
+            </button>
+
+            <div class="text-center pt-2 text-sm text-gray-600">
+                ¿Ya tienes cuenta? 
+                <a href="#" id="go-to-login-link-1" class="text-blue-600 hover:text-blue-800 font-medium">Vuelve al Login.</a>
+            </div>
+        </div>
+        
+        <!-- ============================================= -->
+        <!-- 3. VISTA DE RESTABLECER CONTRASEÑA -->
+        <!-- ============================================= -->
+        <div id="reset-password-view" class="space-y-4 hidden">
+            <p class="text-sm text-gray-600 mb-4">Ingresa el correo asociado a tu cuenta para recibir un enlace de restablecimiento.</p>
+            <input type="email" id="reset-email" placeholder="Correo Electrónico" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-150" required>
+            
+            <button id="reset-password-btn" class="w-full bg-orange-500 text-white font-semibold py-3 rounded-lg hover:bg-orange-600 transition duration-150 shadow-lg shadow-orange-300/50">
+                Enviar Enlace
+            </button>
+
+            <div class="text-center pt-2 text-sm text-gray-600">
+                <a href="#" id="go-to-login-link-2" class="text-blue-600 hover:text-blue-800 font-medium">Volver al Login</a>
+            </div>
+        </div>
+
+        <!-- ============================================= -->
+        <!-- 4. VISTA DE USUARIO AUTENTICADO -->
+        <!-- ============================================= -->
+        <div id="user-view" class="hidden text-center">
+            <p class="text-xl font-semibold text-gray-700 mb-4">¡Bienvenido a bordo!</p>
+            <p id="user-email-display" class="text-2xl font-bold text-blue-600 mb-6 break-words"></p>
+            
+            <!-- Indicador de verificación de correo -->
+            <div id="verification-status" class="mb-4 p-3 rounded-lg text-sm font-medium"></div>
+
+            <!-- Botón de Cerrar Sesión (Rojo para indicar acción destructiva) -->
+            <button id="logout-btn" class="w-full bg-red-500 text-white font-semibold py-3 rounded-lg hover:bg-red-600 transition duration-150 shadow-md">
+                Cerrar Sesión
+            </button>
+        </div>
+    </div>
+
+    <!-- Script de Firebase y Lógica de la App -->
+    <script type="module">
+        // Importar módulos de Firebase desde CDN
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { 
+            getAuth, 
+            createUserWithEmailAndPassword, 
+            signInWithEmailAndPassword, 
+            signOut,
+            onAuthStateChanged,
+            signInWithCustomToken,
+            signInAnonymously,
+            sendPasswordResetEmail,
+            sendEmailVerification
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        
+        // ==========================================================
+        // 1. CONFIGURACIÓN E INICIALIZACIÓN DE FIREBASE
+        // ==========================================================
+
+        // CONFIGURACIÓN PROPORCIONADA POR EL USUARIO (adonaytapp)
+        const firebaseConfig = {
+            apiKey: "AIzaSyAcGrB1AUJhchXjNGjBD7s7FnmKchQEZzg",
+            authDomain: "adonaytapp.firebaseapp.com",
+            projectId: "adonaytapp",
+            storageBucket: "adonaytapp.firebasestorage.app",
+            messagingSenderId: "141677270435",
+            appId: "1:141677270435:web:b7c31e84e7b2d86c297616",
+            measurementId: "G-6XDXLLLMN7"
+        };
+        
+        // Usamos la variable de entorno para el token de autenticación inicial, si existe.
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        let app;
+        let auth;
+
+        try {
+            app = initializeApp(firebaseConfig);
+            auth = getAuth(app);
+            setLogLevel('debug');
+            
+            async function handleInitialAuth() {
+                try {
+                    if (initialAuthToken) {
+                        await signInWithCustomToken(auth, initialAuthToken);
+                    } else {
+                        await signInAnonymously(auth);
+                    }
+                } catch (error) {
+                    console.error("Error en la autenticación inicial:", error);
+                }
+            }
+            handleInitialAuth();
+
+        } catch (e) {
+            console.error("Error al inicializar Firebase. Revisa la configuración:", e);
+            displayMessage("Error de configuración de Firebase. ¿Están habilitados los servicios?", 'error');
+        }
+
+        // ==========================================================
+        // 2. ELEMENTOS DEL DOM Y UTILIDADES
+        // ==========================================================
+
+        // Inputs de Login
+        const loginEmailInput = document.getElementById('login-email');
+        const loginPasswordInput = document.getElementById('login-password');
+        const loginBtn = document.getElementById('login-btn');
+        // Inputs de Registro
+        const signupEmailInput = document.getElementById('signup-email');
+        const signupPasswordInput = document.getElementById('signup-password');
+        const signupBtn = document.getElementById('signup-btn');
+        // Inputs de Restablecer
+        const resetEmailInput = document.getElementById('reset-email');
+        const resetPasswordBtn = document.getElementById('reset-password-btn');
+
+        const logoutBtn = document.getElementById('logout-btn');
+        
+        // Vistas
+        const loginFormView = document.getElementById('login-form-view');
+        const signupFormView = document.getElementById('signup-form-view');
+        const resetPasswordView = document.getElementById('reset-password-view');
+        const userView = document.getElementById('user-view');
+        
+        const userEmailDisplay = document.getElementById('user-email-display');
+        const verificationStatus = document.getElementById('verification-status');
+        const messageContainer = document.getElementById('message-container');
+        const messageText = document.getElementById('message-text');
+        const messageStrong = document.getElementById('message-strong');
+        const headerTitle = document.getElementById('header-title');
+        const loader = document.getElementById('loader');
+
+        // Navegación - AHORA LLAMAN A clearMessage() ANTES DE CAMBIAR DE VISTA
+        document.getElementById('go-to-signup-link').addEventListener('click', (e) => { e.preventDefault(); clearMessage(); renderView('signup'); });
+        document.getElementById('go-to-login-link-1').addEventListener('click', (e) => { e.preventDefault(); clearMessage(); renderView('login'); });
+        document.getElementById('go-to-login-link-2').addEventListener('click', (e) => { e.preventDefault(); clearMessage(); renderView('login'); });
+        document.getElementById('forgot-password-link').addEventListener('click', (e) => { e.preventDefault(); clearMessage(); renderView('reset_password'); });
+
+        /**
+         * Muestra/oculta las vistas según el estado actual.
+         * @param {string} viewName - 'login', 'signup', 'reset_password', 'authenticated'
+         */
+        function renderView(viewName) {
+            // Ocultar todas las vistas
+            [loginFormView, signupFormView, resetPasswordView, userView].forEach(view => view.classList.add('hidden'));
+
+            // SE ELIMINA clearMessage() de aquí. Ahora se llama desde los handlers de navegación
+            
+            // Mostrar la vista correcta y actualizar título
+            switch (viewName) {
+                case 'login':
+                    loginFormView.classList.remove('hidden');
+                    headerTitle.textContent = "Inicia Sesión en la Plataforma";
+                    break;
+                case 'signup':
+                    signupFormView.classList.remove('hidden');
+                    headerTitle.textContent = "Crea tu Cuenta";
+                    break;
+                case 'reset_password':
+                    resetPasswordView.classList.remove('hidden');
+                    headerTitle.textContent = "Restablece Contraseña";
+                    break;
+                case 'authenticated':
+                    userView.classList.remove('hidden');
+                    headerTitle.textContent = "¡Sesión Iniciada!";
+                    break;
+            }
+        }
+
+        function showLoader(isVisible) {
+            loader.classList.toggle('hidden', !isVisible);
+            // Oculta todas las vistas mientras carga, excepto si es la vista de usuario
+            if (isVisible) {
+                [loginFormView, signupFormView, resetPasswordView, userView].forEach(view => view.classList.add('hidden'));
+            } 
+            // La lógica para renderizar la vista de login/autenticado al finalizar la carga se deja en 
+            // onAuthStateChanged o en el handler de éxito/error.
+        }
+
+        /**
+         * Muestra un mensaje de error o éxito.
+         * @param {string} text 
+         * @param {string} type - 'error' o 'success'
+         */
+        function displayMessage(text, type) {
+            messageContainer.classList.remove('hidden', 'bg-red-100', 'border-red-400', 'text-red-700', 'bg-green-100', 'border-green-400', 'text-green-700');
+            messageText.textContent = text;
+
+            if (type === 'error') {
+                messageStrong.textContent = 'Error: ';
+                messageContainer.classList.add('bg-red-100', 'border', 'border-red-400', 'text-red-700');
+            } else if (type === 'success') {
+                messageStrong.textContent = 'Éxito: ';
+                messageContainer.classList.add('bg-green-100', 'border', 'border-green-400', 'text-green-700');
+            }
+        }
+
+        function clearMessage() {
+            messageContainer.classList.add('hidden');
+            messageText.textContent = '';
+            messageStrong.textContent = '';
+        }
+
+        // Mapeo de errores comunes de Firebase a español
+        function mapFirebaseError(code) {
+            switch (code) {
+                case 'auth/invalid-email': return 'El formato del correo electrónico es incorrecto.';
+                // Mensaje combinado para errores de credenciales, más seguro y robusto.
+                case 'auth/user-not-found': 
+                case 'auth/wrong-password': 
+                case 'auth/invalid-credential':
+                    return 'Credenciales incorrectas. Verifica tu correo electrónico y contraseña e inténtalo de nuevo.';
+                case 'auth/weak-password': return 'La contraseña debe tener al menos 6 caracteres.';
+                case 'auth/email-already-in-use': return 'Este correo ya está registrado.';
+                case 'auth/missing-email': return 'Por favor, ingresa tu correo electrónico.';
+                case 'auth/operation-not-allowed': return 'La autenticación por correo/contraseña no está habilitada en Firebase.';
+                default: return 'Ocurrió un error desconocido. Código: ' + code;
+            }
+        }
+
+        // ==========================================================
+        // 3. FUNCIONES DE AUTENTICACIÓN
+        // ==========================================================
+
+        // Función de Registro
+        signupBtn.addEventListener('click', async () => {
+            clearMessage();
+            const email = signupEmailInput.value;
+            const password = signupPasswordInput.value;
+
+            if (!email || !password) {
+                displayMessage("Por favor, ingresa un correo y una contraseña.", 'error');
+                return;
+            }
+            
+            showLoader(true);
+
+            try {
+                // 1. Crear el usuario
+                const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+
+                // 2. Enviar el correo de verificación
+                if (userCredential.user) {
+                    await sendEmailVerification(userCredential.user);
+                }
+
+                // 3. Informar al usuario y enviarlo a la vista de login
+                displayMessage("Cuenta creada con éxito. Por favor, revisa tu bandeja de entrada o spam para verificar tu correo antes de iniciar sesión.", 'success');
+                renderView('login');
+
+            } catch (error) {
+                console.error("Error de Registro:", error);
+                displayMessage(mapFirebaseError(error.code), 'error');
+            } finally {
+                showLoader(false);
+                // Asegura que la vista de registro vuelva a ser visible si hubo error
+                if (!auth.currentUser || !auth.currentUser.email) {
+                    renderView('signup');
+                }
+            }
+        });
+
+        // Función de Inicio de Sesión
+        loginBtn.addEventListener('click', async () => {
+            clearMessage();
+            const email = loginEmailInput.value;
+            const password = loginPasswordInput.value;
+
+            if (!email || !password) {
+                displayMessage("Por favor, ingresa un correo y una contraseña.", 'error');
+                return;
+            }
+
+            showLoader(true);
+
+            try {
+                const userCredential = await signInWithEmailAndPassword(auth, email, password);
+                const user = userCredential.user;
+
+                // 1. VERIFICACIÓN DE CORREO
+                if (user && !user.emailVerified) {
+                    // Si el correo NO está verificado, se cierra la sesión y se da el mensaje.
+                    await signOut(auth);
+                    throw new Error('auth/email-not-verified'); 
+                }
+                
+                // 2. INICIO DE SESIÓN EXITOSO Y REDIRECCIÓN
+                displayMessage("Inicio de sesión exitoso. Redirigiendo a preciosgalva...", 'success');
+                
+                // *** AGREGADO: Establecer la bandera de sesión para precios.html ***
+                localStorage.setItem('loggedIn', 'true');
+
+                // IMPORTANTE: Ocultar el loader antes del timeout para evitar la sensación de congelamiento
+                showLoader(false);
+
+                // Redirige al destino solicitado
+                setTimeout(() => {
+                    window.location.href = "precios.html";
+                }, 1000); // Da 1 segundo para que el usuario vea el mensaje
+
+                // Evita que el 'finally' se ejecute, ya que el proceso fue exitoso
+                return; 
+
+            } catch (error) {
+                let errorCode = error.code;
+                
+                // Manejo de nuestro error personalizado de verificación
+                if (error.message === 'auth/email-not-verified') {
+                    errorCode = 'auth/email-not-verified';
+                }
+
+                console.error("Error de Login:", error);
+                
+                // Mapeo de error de verificación no estándar
+                if (errorCode === 'auth/email-not-verified') {
+                    displayMessage("Tu cuenta no está verificada. Revisa tu correo electrónico para activar la cuenta. Si no lo encuentras, usa la función de Restablecer Contraseña para reenviar el enlace de verificación.", 'error');
+                } else {
+                    // Muestra el mensaje de error mapeado (incluyendo el de credenciales incorrectas)
+                    displayMessage(mapFirebaseError(errorCode), 'error');
+                }
+
+            } finally {
+                // Esto siempre se ejecuta si no hubo 'return'.
+                showLoader(false);
+                
+                // Asegura que la vista de login vuelva a ser visible si hubo error
+                if (!auth.currentUser || !auth.currentUser.email) {
+                    renderView('login');
+                }
+            }
+        });
+
+        // Función de Restablecer Contraseña
+        resetPasswordBtn.addEventListener('click', async () => {
+            clearMessage();
+            const email = resetEmailInput.value;
+
+            if (!email) {
+                displayMessage("Por favor, ingresa un correo para restablecer la contraseña.", 'error');
+                return;
+            }
+
+            showLoader(true);
+            try {
+                // Firebase usa esta misma función (sendPasswordResetEmail) para reenviar la verificación si el usuario no existe.
+                await sendPasswordResetEmail(auth, email);
+                displayMessage(`Si el correo "${email}" está registrado, recibirás un enlace de restablecimiento (o verificación).`, 'success');
+                resetEmailInput.value = '';
+                renderView('login'); // Vuelve al login después del envío
+            } catch (error) {
+                console.error("Error al restablecer contraseña:", error);
+                // Por seguridad, no decimos si el correo existe o no
+                displayMessage("Ocurrió un error. Asegúrate de que el correo sea válido e inténtalo de nuevo.", 'error');
+            } finally {
+                showLoader(false);
+            }
+        });
+
+
+        // Función de Cierre de Sesión
+        logoutBtn.addEventListener('click', async () => {
+            clearMessage();
+            try {
+                // *** AGREGADO: Limpiar la bandera de sesión al cerrar sesión ***
+                localStorage.removeItem('loggedIn');
+
+                await signOut(auth);
+                displayMessage("Sesión cerrada correctamente.", 'success');
+                // Al cerrar sesión, onAuthStateChanged se activa y vuelve a renderView('login')
+            } catch (error) {
+                console.error("Error al cerrar sesión:", error);
+                displayMessage("No se pudo cerrar la sesión.", 'error');
+            }
+        });
+
+
+        // ==========================================================
+        // 4. MONITOREO DEL ESTADO (onAuthStateChanged)
+        // ==========================================================
+
+        onAuthStateChanged(auth, (user) => {
+            // Limpia los campos de todos los formularios
+            loginEmailInput.value = '';
+            loginPasswordInput.value = '';
+            signupEmailInput.value = '';
+            signupPasswordInput.value = '';
+            resetEmailInput.value = '';
+
+            if (user && user.email) {
+                // Usuario AUTENTICADO
+                userEmailDisplay.textContent = user.email;
+                renderView('authenticated');
+                
+                // Muestra el estado de verificación
+                if (user.emailVerified) {
+                    verificationStatus.textContent = '✅ Correo verificado.';
+                    verificationStatus.className = 'mb-4 p-3 rounded-lg text-sm font-medium bg-green-100 text-green-700';
+                } else {
+                    verificationStatus.textContent = '⚠️ Correo NO verificado. Por favor, revisa tu bandeja de entrada.';
+                    verificationStatus.className = 'mb-4 p-3 rounded-lg text-sm font-medium bg-yellow-100 text-yellow-700';
+                }
+                
+            } else {
+                // No hay usuario autenticado (incluyendo anónimos y sign out)
+                renderView('login');
+            }
+            loader.classList.add('hidden'); // Asegura que el loader se oculte al final del chequeo de estado
+        });
+
+    </script>
+</body>
+</html>
