@@ -355,10 +355,13 @@
             // Iterar sobre las claves del producto para crear las celdas/campos
             columnHeaders.forEach((key, colIndex) => {
                 const value = product[key];
+                
+                // === INYECCIÓN DE DATOS EN FILA DE DESKTOP (AQUÍ ESTÁ LA CORRECCIÓN) ===
                 const cell = row.insertCell(); // Insertar la celda en la fila de desktop
-
+                
                 // Formatear el valor (Desktop y Mobile)
                 const displayValue = formatCellValue(key, value, cell); 
+                cell.textContent = displayValue; // <--- FIX: Inyectar el texto formateado en la celda
                 
                 // === LÓGICA DE RENDERIZADO MÓVIL ===
 
@@ -513,3 +516,4 @@
 </script>
 </body>
 </html>
+
